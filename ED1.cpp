@@ -152,7 +152,7 @@ int main() {
     // RGB array for creating images
     unsigned char* data = new unsigned char[WIDTH * HEIGHT * 3];   
     FILE *file;
-    file = fopen("C:/output/output.dat", "w");
+    file = fopen("/opt/electrodynamics/output.dat", "w");
     
     double k = FREQUENCY / c;           // Wave number
     vector3 xhat = vector3(1., 0., 0.);

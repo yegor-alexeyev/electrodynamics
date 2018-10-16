@@ -35,6 +35,6 @@ const double GAMMA           = 1. / 2.2;
 
 const double T_INIT          = 0.0001;
 
-const std::string OUTPUT_DIR = "C:/output/electrodynamics";
+const std::string OUTPUT_DIR = "/tmp/electrodynamics";
 
 #endif

@@ -7,19 +7,21 @@
  * This header file contains the following utility functions for 3DPauli:
  * 
  * Complex to RGB conversion - for plotting complex functions
- * BMP image writing routine for Windows -> MUST BE UPDATED TO TGA FOR ALL PLATF
  */
 
 #ifndef UTILITIES_H
 #define	UTILITIES_H
 
-#include <windows.h>
 #include <sstream>
 #include <complex>
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include "parameters_ED1.h"
+#include <png.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 
 using namespace std;
 
@@ -64,66 +66,121 @@ void complex_to_rgb(const complex<double> C, double RGB[]){
     /////////////////////////////////
 }
 
-int write_image(unsigned char *data, int imagecounter){
-    stringstream filename;
-    string filenamestring;
-    filename.str("");
-    if (imagecounter<10)
-        filename << OUTPUT_DIR << "/frame0000" << (int) imagecounter << ".bmp";
-    else if (imagecounter<100)
-        filename << OUTPUT_DIR << "/frame000" << (int) imagecounter << ".bmp";
-    else if (imagecounter<1000)
-        filename <<  OUTPUT_DIR << "/frame00" << (int) imagecounter << ".bmp";
-    else if (imagecounter<10000)
-        filename <<  OUTPUT_DIR << "/frame0" << (int) imagecounter << ".bmp";
-    else
-        filename << OUTPUT_DIR << "/frame" << (int) imagecounter << ".bmp";
+static unsigned char * pixel_at (unsigned char * data, int x, int y)
+{
+    return data + (WIDTH * y + x)*3;
+}
 
-    filenamestring = filename.str();
+/* Write "bitmap" to a PNG file specified by "path"; returns 0 on
+   success, non-zero on error. */
 
-    HANDLE file;
-    BITMAPFILEHEADER header;
-    BITMAPINFOHEADER info;
-    RGBTRIPLE *image;
-    DWORD write = 0;
+static int save_png_to_file (unsigned char *data, const char *path)
+{
+    FILE * fp;
+    png_structp png_ptr = NULL;
+    png_infop info_ptr = NULL;
+    size_t x, y;
+    png_byte ** row_pointers = NULL;
+    /* "status" contains the return value of this function. At first
+       it is set to a value which means 'failure'. When the routine
+       has finished its work, it is set to a value which means
+       'success'. */
+    int status = -1;
+    /* The following number is set by trial and error only. I cannot
+       see where it it is documented in the libpng manual.
+    */
+    int pixel_size = 3;
+    int depth = 8;
+    
+    fp = fopen (path, "wb");
+    if (! fp) {
+        goto fopen_failed;
+    }
 
-    image = new RGBTRIPLE[WIDTH * HEIGHT];
-    file = CreateFile(filenamestring.c_str(), GENERIC_WRITE, 0, NULL, 
-                      CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL); 
-    //ofstream file2;
-    //file2.open(filenamestring.c_str());
-    //file2.close();
+    png_ptr = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (png_ptr == NULL) {
+        goto png_create_write_struct_failed;
+    }
+    
+    info_ptr = png_create_info_struct (png_ptr);
+    if (info_ptr == NULL) {
+        goto png_create_info_struct_failed;
+    }
+    
+    /* Set up error handling. */
 
-    header.bfType = 19778;                                                                    //Sets our type to BM or bmp
-    header.bfSize = sizeof(header.bfOffBits) + sizeof(RGBTRIPLE);                                                //Sets the size equal to the size of the header struct
-    header.bfReserved1 = 0;                                                                    //sets the reserves to 0
-    header.bfReserved2 = 0;
-    header.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);                    //Sets offbits equal to the size of file and info header
+    if (setjmp (png_jmpbuf (png_ptr))) {
+        goto png_failure;
+    }
+    
+    /* Set image attributes. */
 
-    info.biSize = sizeof(BITMAPINFOHEADER);
-    info.biWidth = WIDTH;
-    info.biHeight = HEIGHT;
-    info.biPlanes = 1;
-    info.biBitCount = 24;
-    info.biCompression = BI_RGB;
-    info.biSizeImage = WIDTH * HEIGHT * (24/8);
-    info.biXPelsPerMeter = 2400;
-    info.biYPelsPerMeter = 2400;
-    info.biClrImportant = 0;
-    info.biClrUsed = 0;
+    png_set_IHDR (png_ptr,
+                  info_ptr,
+                  WIDTH,
+                  HEIGHT,
+                  depth,
+                  PNG_COLOR_TYPE_RGB,
+                  PNG_INTERLACE_NONE,
+                  PNG_COMPRESSION_TYPE_DEFAULT,
+                  PNG_FILTER_TYPE_DEFAULT);
+    
+    /* Initialize rows of PNG. */
 
-    WriteFile(file, &header, sizeof(header), &write, NULL);
-    WriteFile(file, &info, sizeof(info), &write, NULL);
-
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            image[WIDTH * y + x].rgbtRed = data[(WIDTH*y+x)*3 + 0];
-            image[WIDTH * y + x].rgbtGreen = data[(WIDTH*y+x)*3+1];
-            image[WIDTH * y + x].rgbtBlue = data[(WIDTH*y+x)*3 +2];
+    row_pointers = (png_byte**)png_malloc (png_ptr, HEIGHT * sizeof (png_byte *));
+    for (y = 0; y < HEIGHT; y++) {
+        png_byte *row = 
+            (png_byte*)png_malloc (png_ptr, sizeof (uint8_t) * WIDTH * pixel_size);
+        row_pointers[y] = row;
+        for (x = 0; x < WIDTH; x++) {
+            unsigned char * pixel = pixel_at (data, x, y);
+            *row++ = *pixel;
+            *row++ = *(pixel + 1);
+            *row++ = *(pixel + 2);
         }
     }
-    WriteFile(file, image, info.biSizeImage, &write, NULL);
-    CloseHandle(file);    
+    
+    /* Write the image data to "fp". */
+
+    png_init_io (png_ptr, fp);
+    png_set_rows (png_ptr, info_ptr, row_pointers);
+    png_write_png (png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
+
+    /* The routine has successfully written the file, so we set
+       "status" to a value which indicates success. */
+
+    status = 0;
+    
+    for (y = 0; y < HEIGHT; y++) {
+        png_free (png_ptr, row_pointers[y]);
+    }
+    png_free (png_ptr, row_pointers);
+    
+ png_failure:
+ png_create_info_struct_failed:
+    png_destroy_write_struct (&png_ptr, &info_ptr);
+ png_create_write_struct_failed:
+    fclose (fp);
+ fopen_failed:
+    return status;
+}
+
+int write_image(unsigned char *data, int imagecounter){
+    stringstream filename;
+    filename.str("");
+    if (imagecounter<10)
+        filename << OUTPUT_DIR << "/frame0000" << (int) imagecounter << ".png";
+    else if (imagecounter<100)
+        filename << OUTPUT_DIR << "/frame000" << (int) imagecounter << ".png";
+    else if (imagecounter<1000)
+        filename <<  OUTPUT_DIR << "/frame00" << (int) imagecounter << ".png";
+    else if (imagecounter<10000)
+        filename <<  OUTPUT_DIR << "/frame0" << (int) imagecounter << ".png";
+    else
+        filename << OUTPUT_DIR << "/frame" << (int) imagecounter << ".png";
+
+    save_png_to_file(data, filename.str().c_str());
+
 
     return 0;
 }
