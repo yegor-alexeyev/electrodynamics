@@ -34,6 +34,11 @@
 
 #include <cstdlib>
 #include <complex>
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <iostream>
+
 #include "parameters_ED1.h"
 #include "utilities.h"
 #include "vector3.h"
@@ -143,6 +148,11 @@ double adv_time(double t, vector3 r){
 
 // MAIN FUNCTION
 ////////////////
+void display_image(unsigned char *data, int imagecounter)
+{
+    cv::Mat image(HEIGHT, WIDTH, CV_8UC3, data);
+    imshow( "rendering", image );
+}
 
 int main() {
     
@@ -151,8 +161,6 @@ int main() {
     
     // RGB array for creating images
     unsigned char* data = new unsigned char[WIDTH * HEIGHT * 3];   
-    FILE *file;
-    file = fopen("/opt/electrodynamics/output.dat", "w");
     
     double k = FREQUENCY / c;           // Wave number
     vector3 xhat = vector3(1., 0., 0.);
@@ -172,6 +180,8 @@ int main() {
     // MAIN COMPUTATION
     ///////////////////
     
+    cv::namedWindow( "rendering");
+
     // for all time steps...
     for (int t = 0; t < TIMESTEPS; t++){        
         // First pass over all pixels to compute the vector potential...
@@ -323,17 +333,12 @@ int main() {
                 data[3 * (WIDTH * j + i) + 1] = max(0., min(GRE,255.));
                 data[3 * (WIDTH * j + i) + 2] = max(0., min(BLU,255.)); 
                 
-                // PRINT DATA TO FILE
-                /////////////////////
-                
-                if (j == 400){
-                    fprintf(file, "\n%.8e %.8e", r.x, 
-                            norm(A_field[WIDTH * j + i]));
-                }
             }
         }
         
-        write_image(data, q);
+
+        display_image(data, q);
+        cv::waitKey(1);                                          
         
         cout << "\nOn time step " << (int) q << " of " << (int) (TIMESTEPS-1);
         
@@ -344,7 +349,6 @@ int main() {
     // Cleanup & Exit
     /////////////////
     
-    fclose(file);
     delete[] data;
     
     return 0;
