@@ -55,7 +55,7 @@ using namespace std;
 ////////////
 vector3 position(double t){
     vector3 X;
-    X.x = 400 + 300 * sin(8e5 * t); // Horiz Osc
+    X.x = 400 + AMPLITUDE * sin(FREQUENCY * t); // Horiz Osc
     //X.x = 0.5 * ACCELERATION * t * t; // Linear
     //X.y = SCALE * AMPLITUDE * sin(FREQUENCY * t); // Vert Osc
     //X.x = 0.;
@@ -67,20 +67,21 @@ vector3 position(double t){
     return X;
 }
 
-vector3 velocity(double tau){
+vector3 velocity(double t){
     
     // If tau - t <= 0, we're asking for velocity before the simulation begins!
     // And we assume the particle is STATIONARY before t = 0
     // NOTE: we allow a small tolerance due to the binary search algorithm's
     // finite precision.
-    if (tau <= 1.e-12)
-        return vector3(0., 0., 0.);
+    /* if (tau <= 1.e-12) */
+    /*     return vector3(0., 0., 0.); */
     
     vector3 V;
     /* V.x = -FREQUENCY * AMPLITUDE * sin(FREQUENCY * tau); // Horiz Osc */
     //V.x = ACCELERATION * t; // Linear
     //V.y = SCALE * FREQUENCY * AMPLITUDE * cos(FREQUENCY * t); // Vert Osc
-    V.x = 0.;
+    V.x = AMPLITUDE * FREQUENCY*cos(FREQUENCY * t); // Horiz Osc
+    /* V.x = 0.; */
     V.y = 0.;
     /* V.y = VELOCITY; */
     //V.y = 0.;
@@ -104,18 +105,19 @@ vector3 acceleration(double tau){
     return a;
 }
 
+typedef double* matrix;
 
-void process( double x, double y, unsigned char* result, double t)
+void process( double x, double y, matrix result, double t)
 {
     /* result[3 * (WIDTH * y + x) + 0] = (int)(t/8.5e-12); */
     const int nearby_x = (int)(x + 0.5);
     const int nearby_y = (int)(y + 0.5);
     if (nearby_x >= 0 && nearby_y >= 0 && nearby_x < WIDTH && nearby_y < HEIGHT) {
-        result[3 * (WIDTH * nearby_y + nearby_x) + 1] = MIN(255, t/1.3e-8);
+        result[WIDTH * nearby_y + nearby_x] = t;
     }
 }
 
-void processOctet(double x0, double y0, double x, double y, unsigned char* result, double t) {
+void processOctet(double x0, double y0, double x, double y, matrix result, double t) {
 		process(x + x0, y + y0, result, t);
 		process(y + x0, x + y0, result, t);
 		process(-x + x0, y + y0, result, t);
@@ -127,7 +129,7 @@ void processOctet(double x0, double y0, double x, double y, unsigned char* resul
 }
 
 
-void process_wave_front(double t, double mark, double radius, unsigned char* result) {
+void process_wave_front(double t, double mark, double radius, matrix result) {
     double x = 0.0;
     double y = radius;
     const vector3 pos = position(t);
@@ -146,11 +148,11 @@ void process_wave_front(double t, double mark, double radius, unsigned char* res
 
 
 //given a particle trajectory and a timestamp calculate a map  of retarded times for each discrete point in [0..WIDTH,0..HEIGHT]
-void calculate_retarded_times(double rendered_time, unsigned char* result)
+void calculate_retarded_times(double rendered_time, matrix result)
 {
     for (double t = rendered_time; t >= MAX(T_INIT, rendered_time - 3e-6); t-=0.5/c) {
         double wave_front_radius = c*(rendered_time - t);
-        process_wave_front(t, rendered_time - t, wave_front_radius, result);
+        process_wave_front(t, t, wave_front_radius, result);
     }
 }
 
@@ -203,8 +205,9 @@ double adv_time(double t, vector3 r){
 
 // MAIN FUNCTION
 ////////////////
-void display_image(unsigned char *data, int imagecounter)
+void display_image(unsigned char* data, int imagecounter)
 {
+
     cv::Mat image(HEIGHT, WIDTH, CV_8UC3, data);
     imshow( "rendering", image );
 }
@@ -215,7 +218,9 @@ int main() {
     ///////////////////////
     
     // RGB array for creating images
-    unsigned char* data = new unsigned char[WIDTH * HEIGHT * 3];   
+    unsigned char* bitmap = new unsigned char[WIDTH * HEIGHT*3];
+
+    matrix data = new double[WIDTH * HEIGHT];   
     
     double k = FREQUENCY / c;           // Wave number
     vector3 xhat = vector3(1., 0., 0.);
@@ -240,8 +245,25 @@ int main() {
     // for all time steps...
 
     for (int t = 0; t < TIMESTEPS; t++){        
-        memset(data, 0, WIDTH * HEIGHT * 3);
+        memset(data, 0, WIDTH * HEIGHT * sizeof(double));
         calculate_retarded_times(time, data);
+
+        for (int j = 0; j < HEIGHT; j++){
+            for (int i = 0; i < WIDTH; i++){               
+                double retarded_time = data[WIDTH * j + i];
+                vector3 r;
+                r.x = i;
+                r.y = j;
+                r.z = 0;
+                vector3 R = r - position(retarded_time);
+                vector3 V = velocity(retarded_time);
+                const double PHI = 1.0 / (norm(R) - dot(R, V)/c);
+
+                //reusing the matrix
+                data[WIDTH * j + i] = PHI;
+
+            }
+        }
 
         // First pass over all pixels to compute the vector potential...
         /* for (int j = 0; j < HEIGHT; j++){ */
@@ -391,8 +413,13 @@ int main() {
         /*     } */
         /* } */
         
-
-        display_image(data, q);
+        for (int j = 0; j < HEIGHT; j++){
+            for (int i = 0; i < WIDTH; i++){
+                const double value = data[WIDTH * j + i];
+                bitmap[3 * (WIDTH * j + i) + 1] = MIN(255, value/9.3e-4);
+            }
+        }
+        display_image(bitmap, q);
         cv::waitKey(1);                                          
         
         cout << "\nOn time step " << (int) q << " of " << (int) (TIMESTEPS-1);
@@ -405,6 +432,7 @@ int main() {
     /////////////////
     
     delete[] data;
+    delete[] bitmap;
     
     return 0;
 }
