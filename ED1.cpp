@@ -55,14 +55,14 @@ using namespace std;
 ////////////
 vector3 position(double t){
     vector3 X;
-    X.x = 400 + AMPLITUDE * sin(FREQUENCY * t); // Horiz Osc
+    X.x = WIDTH/2 + AMPLITUDE * sin(FREQUENCY * t); // Horiz Osc
     //X.x = 0.5 * ACCELERATION * t * t; // Linear
     //X.y = SCALE * AMPLITUDE * sin(FREQUENCY * t); // Vert Osc
     //X.x = 0.;
     /* X.x = 400.; */
     /* X.y = VELOCITY * t - VELOCITY * T_INIT - 300.; */
     //X.y = 0.;
-    X.y = 300.;
+    X.y = HEIGHT/2;
     X.z = 0.;
     return X;
 }
@@ -107,9 +107,13 @@ vector3 acceleration(double tau){
 
 typedef double* matrix;
 
-void process( double x, double y, matrix result, double t)
+void process( double x0, double y0, matrix result, double t, double rendered_time, int dx, int dy)
 {
     /* result[3 * (WIDTH * y + x) + 0] = (int)(t/8.5e-12); */
+
+
+    double x = x0 + dx;
+    double y = y0 + dy;
     const int nearby_x = (int)(x + 0.5);
     const int nearby_y = (int)(y + 0.5);
     if (nearby_x >= 0 && nearby_y >= 0 && nearby_x < WIDTH && nearby_y < HEIGHT) {
@@ -117,27 +121,27 @@ void process( double x, double y, matrix result, double t)
     }
 }
 
-void processOctet(double x0, double y0, double x, double y, matrix result, double t) {
-		process(x + x0, y + y0, result, t);
-		process(y + x0, x + y0, result, t);
-		process(-x + x0, y + y0, result, t);
-		process(-y + x0, x + y0, result, t);
-		process(-x + x0, -y + y0, result, t);
-		process(-y + x0, -x + y0, result, t);
-		process(x + x0, -y + y0, result, t);
-		process(y + x0, -x + y0, result, t);
+void processOctet(double x0, double y0, int x, int y, matrix result, double t, double rendered_time) {
+		process(x0, y0, result, t, rendered_time, x, y);
+		process(x0, y0, result, t, rendered_time, y, x);
+		process(x0, y0, result, t, rendered_time, -x, y);
+		process(x0, y0, result, t, rendered_time, -y, x);
+		process(x0, y0, result, t, rendered_time, -x, -y);
+		process(x0, y0, result, t, rendered_time, -y, -x);
+		process(x0, y0, result, t, rendered_time, x, -y);
+		process(x0, y0, result, t, rendered_time, y, -x);
 }
 
 
-void process_wave_front(double t, double mark, double radius, matrix result) {
-    double x = 0.0;
-    double y = radius;
-    const vector3 pos = position(t);
+void process_wave_front(double retarded_time, int radius, matrix result, double rendered_time) {
+    int x = 0.0;
+    int y = radius;
+    const vector3 pos = position(retarded_time);
     double x0 = pos.x;
     double y0 = pos.y;
 
     while (x <= y) {
-        processOctet(x0,y0,x,y, result, mark);
+        processOctet(x0,y0,x,y, result, retarded_time, rendered_time);
         if ( (2*x+1)*(2*x+1) + (2*y-1)*(2*y-1) <= 4*radius*radius ) {
             x++;
         } else {
@@ -150,10 +154,12 @@ void process_wave_front(double t, double mark, double radius, matrix result) {
 //given a particle trajectory and a timestamp calculate a map  of retarded times for each discrete point in [0..WIDTH,0..HEIGHT]
 void calculate_retarded_times(double rendered_time, matrix result)
 {
-    for (double t = rendered_time; t >= rendered_time - 2e-6; t-=1e-9) {
-        double wave_front_radius = c*(rendered_time - t);
-        process_wave_front(t, t, wave_front_radius, result);
+    for (int wave_front_radius = 0; wave_front_radius <= (WIDTH+HEIGHT); wave_front_radius++)
+    {
+        double retarded_time = rendered_time - wave_front_radius/c;
+        process_wave_front(retarded_time, wave_front_radius, result, rendered_time);
     }
+
 }
 
 
