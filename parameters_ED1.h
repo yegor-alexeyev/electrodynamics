@@ -25,7 +25,8 @@ const int    HEIGHT          = 600;
 const double SCALE           = 2.0;            // cm; scale factor
 const double VELOCITY        = 2.448e10;         // cm/s Linear velocity, 0.8333 c
 const double ACCELERATION    = 4.e18;          // Used for linear acceleration
-const double FREQUENCY       = 1.49e7;
+//2*pi*frequency*amplitude < c
+const double FREQUENCY       = 4.29e6;
 const double AMPLITUDE       = 10;
 /* const double CHARGE          = 4.80320425e-10; // Elementary charge, statcoulomb */
 const double CHARGE          = 4.80320425e-1; // Elementary charge, statcoulomb

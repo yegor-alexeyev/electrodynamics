@@ -50,19 +50,14 @@ using namespace std;
 
 #define _i_ complex<double>(0., 1.) // Imaginary unit
 #define c   2.99792458e8           // Speed of light, m/s
+#define pi 3.14159
 
 // FUNCTIONS
 ////////////
 vector3 position(double t){
     vector3 X;
-    X.x = WIDTH/2 + AMPLITUDE * sin(FREQUENCY * t); // Horiz Osc
-    //X.x = 0.5 * ACCELERATION * t * t; // Linear
-    //X.y = SCALE * AMPLITUDE * sin(FREQUENCY * t); // Vert Osc
-    //X.x = 0.;
-    /* X.x = 400.; */
-    /* X.y = VELOCITY * t - VELOCITY * T_INIT - 300.; */
-    //X.y = 0.;
-    /* X.y = HEIGHT/2 + AMPLITUDE * cos(FREQUENCY * t); */
+    X.x = WIDTH/2 + AMPLITUDE * sin(2*pi*FREQUENCY * t); // Horiz Osc
+    /* X.y = HEIGHT/2 + AMPLITUDE * cos(2*pi*FREQUENCY * t); */
     /* X.x = WIDTH/2.; */
     X.y = HEIGHT/2.;
     X.z = 0.;
@@ -71,22 +66,10 @@ vector3 position(double t){
 
 vector3 velocity(double t){
     
-    // If tau - t <= 0, we're asking for velocity before the simulation begins!
-    // And we assume the particle is STATIONARY before t = 0
-    // NOTE: we allow a small tolerance due to the binary search algorithm's
-    // finite precision.
-    /* if (tau <= 1.e-12) */
-    /*     return vector3(0., 0., 0.); */
     
     vector3 V;
-    /* V.x = -FREQUENCY * AMPLITUDE * sin(FREQUENCY * tau); // Horiz Osc */
-    //V.x = ACCELERATION * t; // Linear
-    //V.y = SCALE * FREQUENCY * AMPLITUDE * cos(FREQUENCY * t); // Vert Osc
-    V.x = AMPLITUDE * FREQUENCY*cos(FREQUENCY * t); // Horiz Osc
-    /* V.x = 0.; */
-    /* V.y = 0.; */
-    /* V.y = HEIGHT/2 - AMPLITUDE * FREQUENCY*sin(FREQUENCY * t); */
-    /* V.y = VELOCITY; */
+    V.x = AMPLITUDE *2*pi* FREQUENCY*cos(2*pi*FREQUENCY * t); // Horiz Osc
+    /* V.y =  - AMPLITUDE *2*pi* FREQUENCY*sin(2*pi*FREQUENCY * t); */
     /* V.x = 0.; */
     V.y = 0.;
     V.z = 0.;
@@ -96,14 +79,10 @@ vector3 velocity(double t){
 // We need this to compute the E-field
 vector3 acceleration(double t){
     
-    // If tau - t <= 0, we're asking for accel. before the simulation begins!
-    // And we assume the particle is STATIONARY before t = 0
-    /* if (tau <= 1.e-12) */
-    /*     return vector3(0., 0., 0.); */
     
     vector3 a;
-    /* a.x = -FREQUENCY * FREQUENCY * AMPLITUDE * cos(FREQUENCY * tau); */
-    a.x = -AMPLITUDE * FREQUENCY*FREQUENCY*sin(FREQUENCY * t); // Horiz Osc
+    a.x = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*sin(2*pi*FREQUENCY * t); // Horiz Osc
+    /* a.y = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*cos(2*pi*FREQUENCY * t); // Horiz Osc */
     /* a.x = 0.; */
     a.y = 0.;
     a.z = 0.;
@@ -261,7 +240,7 @@ int main() {
             for (int i = 0; i < WIDTH; i++){               
                 double retarded_time = data[WIDTH * j + i];
                 if (retarded_time == 0.0) {
-                    data[WIDTH * j + i] = 0;
+                    data[WIDTH * j + i] =0;
                     continue;
                 }
                 vector3 r;
@@ -277,177 +256,30 @@ int main() {
                 /* data[WIDTH * j + i] = PHI; */
 
                 vector3 R_hat = normalize(R);
-                double mu = norm(V)/c;
-                double gamma = 1. / sqrt(1. - mu * mu);
                 vector3 E = 
-                    (R_hat - (V/c)) * CHARGE / (gamma * gamma *
-                    pow((1. - dot(R_hat, (V/c))),3.) * norm(R) * norm(R)) 
+                    (R_hat*c - V) * CHARGE * (c*c - norm(V)*norm(V))/ (
+                    pow((c - dot(R_hat, V)),3.) * norm(R) * norm(R)) 
                     + 
-                    (cross(R_hat, cross((R_hat - V/c), a)) / 
-                    (pow((1. - dot(R_hat, (V/c))),3.) * norm(R))) * CHARGE / (c*c)
+                    (cross(R_hat, cross(R_hat*c - V, a)) / 
+                    (pow(c - dot(R_hat, V),3.) * norm(R))) * CHARGE
                     ;
-                /* data[WIDTH * j + i] = sqrt(10*norm(E)); */
                 data[WIDTH * j + i] = E.x;
 
             }
         }
 
-        // First pass over all pixels to compute the vector potential...
-        /* for (int j = 0; j < HEIGHT; j++){ */
-        /*     for (int i = 0; i < WIDTH; i++){ */               
-        /*         // COMPUTE POSITION & RETARDED TIME */
-        /*         /////////////////////////////////// */
-
-        /*         // Position coordinates at each pixel center */
-        /*         r.x = SCALE * ((double) i + .5 - WIDTH / 2.); */
-        /*         //r.y = SCALE * ((double) j + .5 + 3413.15 * HEIGHT / 1.); */
-        /*         r.y = SCALE * ((double) j + .5 - HEIGHT / 2.); */
-        /*         r.z = 0.; */                
-                
-        /*         tau = ret_time(time, r); */               
-        /*         R = r - position(tau); */  
-        /*         V = velocity(tau); */
-        /*         a = acceleration(tau); */
-                
-        /*         // COMPUTE LIÉNARD-WIECHERT SCALAR POTENTIAL (PHI) */
-        /*         ////////////////////////////////////////////////// */
-
-        /*         PHI = CHARGE / (norm(R) - dot(R, V)/c); */
-        /*         PHI_field[WIDTH * j + i] = PHI; */
-
-        /*         // COMPUTE LIÉNARD-WIECHERT VECTOR POTENTIAL (A) */
-        /*         //////////////////////////////////////////////// */
-                
-        /*         A = V / c * PHI; */
-        /*         A_field[WIDTH * j + i] = A; */
-                
-        /*         // FOURIER VECTOR POTENTIAL (A_fourier) */
-        /*         /////////////////////////////////////// */
-                
-        /*         complex<double> complexterm = (-_i_ * exp(_i_ * (k * norm(r) - */ 
-        /*                                       FREQUENCY * time))); */
-        /*         double realpart = complexterm.real(); */
-        /*         A_fourier = xhat * k/norm(r) * CHARGE * AMPLITUDE * realpart; */  
-                
-        /*         // COMPUTE ELECTRIC FIELD */
-        /*         ///////////////////////// */
-                
-        /*         R_hat = normalize(R); */
-        /*         gamma = 1. / sqrt(1. - norm(V) * norm(V) / (c * c)); */
-        /*         E = (R_hat - (V/c)) * CHARGE / (gamma * gamma * */
-        /*             pow((1. - dot(R_hat, (V/c))),3.) * norm(R) * norm(R)) + */ 
-        /*             (cross(R_hat, cross((R_hat - V/c), a)) / */ 
-        /*             (pow((1. - dot(R_hat, (V/c))),3.) * norm(R))) * CHARGE / (c*c); */
-        /*         E_field[WIDTH * j + i] = E; */
-
-                
-        /*     } */      
-        /* } */   
-        
-        
-        
-        // NOTE - we only need one pass - just compute B from E
-        
-        
-        
-        
-        // Second pass over all pixels - first we fill A, then we compute curl A
-        /* for (int j = 0; j < HEIGHT; j++){ */
-        /*     for (int i = 0; i < WIDTH; i++){ */
-        /*         // COMPUTE B = curl A */
-        /*         ///////////////////// */
-                
-        /*         // Reinitialize B-vector */
-        /*         B.x = 0.; */
-        /*         B.y = 0.; */
-        /*         B.z = 0.; */
-                
-        /*         // We ignore the outermost border (b/c of spatial derivative) */
-        /*         if (i > 1 && i < (WIDTH-1) && j > 1 && j < (HEIGHT-1)){ */
-        /*             // Assume d/dz = 0 (we are in the XY-plane and the fields */  
-        /*             // are symmetric about this plane) */
-        /*             // We need the following derivatives; */
-        /*             double dAzdx = (A_field[WIDTH * j + (i+1)].z - */ 
-        /*                             A_field[WIDTH * j + (i-1)].z) / (2.*SCALE); */
-        /*             double dAzdy = (A_field[WIDTH * (j+1) + i].z - */ 
-        /*                             A_field[WIDTH * (j-1) + i].z) / (2.*SCALE); */
-        /*             double dAydx = (A_field[WIDTH * j + (i+1)].y - */ 
-        /*                             A_field[WIDTH * j + (i-1)].y) / (2.*SCALE); */
-        /*             double dAxdy = (A_field[WIDTH * (j+1) + i].x - */ 
-        /*                             A_field[WIDTH * (j-1) + i].x) / (2.*SCALE); */
-                    
-        /*             // Update B-vector */
-        /*             B.x = dAzdy - 0.; */
-        /*             B.y = 0. - dAzdx; */
-        /*             B.z = dAydx - dAxdy; */             
-        /*         } */
-                
-        /*         // COMPUTE PIXEL COLOR (PLOT) */
-        /*         ///////////////////////////// */
-                
-        /*         double factor = 1.25e14;//6.e10; */
-        /*         double color = norm(A_field[WIDTH * j + i]); */
-                
-        /*         // Draw phi */
-        /*         //RED = factor * PHI_field[WIDTH * j + i]; */
-        /*         //GRE = factor * PHI_field[WIDTH * j + i]; */
-        /*         //BLU = factor * PHI_field[WIDTH * j + i]; */
-                
-        /*         // Draw the norm of A */
-        /*         //RED = factor * color; */
-        /*         //GRE = factor * color; */
-        /*         //BLU = factor * color; */
-                
-        /*         // Draw A itself (R = x, G = y, B = z) */
-        /*         //RED = factor * abs(A_field[WIDTH * j + i].x); */
-        /*         //GRE = factor * abs(A_field[WIDTH * j + i].y); */
-        /*         //BLU = factor * abs(A_field[WIDTH * j + i].z); */
-                
-        /*         // Draw E */ 
-        /*         //RED = 0.5 + factor * E_field[WIDTH * j + i].x; */
-        /*         //GRE = 0.5 + factor * E_field[WIDTH * j + i].y; */
-        /*         //BLU = 0.5 + factor * E_field[WIDTH * j + i].z; */
-        /*         // */
-                
-        /*         // Draw B */
-        /*         RED = 0.5 + factor * B.x; */
-        /*         GRE = 0.5 + factor * B.y; */
-        /*         BLU = 0.5 + factor * B.z; */
-        /*         // */
-                
-        /*         // Draw E + B */
-        /*         /1* RED = 0.5 * (0.5 + factor * E_field[WIDTH * j + i].x + *1/ */ 
-        /*         /1*              0.5 + factor * B.x); *1/ */
-        /*         /1* GRE = 0.5 * (0.5 + factor * E_field[WIDTH * j + i].y + *1/ */ 
-        /*         /1*              0.5 + factor * B.y); *1/ */
-        /*         /1* BLU = 0.5 * (0.5 + factor * E_field[WIDTH * j + i].z + *1/ */ 
-        /*         /1*              0.5 + factor * B.z); *1/ */
-                
-        /*         // Draw norm(B) */
-        /*         //RED = factor * norm(B); */
-        /*         //GRE = factor * norm(B); */
-        /*         //BLU = factor * norm(B); */
-
-        /*         // Gamma correction & color clamping */
-        /*         RED = 255. * pow(RED, GAMMA); */
-        /*         GRE = 255. * pow(GRE, GAMMA); */
-        /*         BLU = 255. * pow(BLU, GAMMA); */
-
-        /*         data[3 * (WIDTH * j + i) + 0] = max(0., min(RED,255.)); */
-        /*         data[3 * (WIDTH * j + i) + 1] = max(0., min(GRE,255.)); */
-        /*         data[3 * (WIDTH * j + i) + 2] = max(0., min(BLU,255.)); */ 
-                
-        /*     } */
-        /* } */
         
         for (int j = 0; j < HEIGHT; j++){
             for (int i = 0; i < WIDTH; i++){
                 const double value = data[WIDTH * j + i];
-                const double scaled_value = value*1000000;
+                /* const double scaled_value = value; */
+                const double scaled_value = value*600000;
                 if (scaled_value < 0) {
+                    bitmap[3 * (WIDTH * j + i) + 1] = 0;
                     bitmap[3 * (WIDTH * j + i) + 2] = MIN(255, -scaled_value);
                 } else {
                     bitmap[3 * (WIDTH * j + i) + 1] = MIN(255, scaled_value);
+                    bitmap[3 * (WIDTH * j + i) + 2] = 0;
                 }
             }
         }
