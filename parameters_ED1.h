@@ -29,11 +29,11 @@ const double FREQUENCY       = 1.2e9;
 const double AMPLITUDE       = 2.;
 const double CHARGE          = 4.80320425e-10; // Elementary charge, statcoulomb
 const int    NSTEPS          = 50;             // For binary search (ret. time)
-const int    TIMESTEPS       = 420;
-const double T_INCREMENT     = 8.5e-11;
+const int    TIMESTEPS       = 42000;
+const double T_INCREMENT     = 2.5e-8;
 const double GAMMA           = 1. / 2.2;
 
-const double T_INIT          = 0.0001;
+const double T_INIT          = 0.0;
 
 const std::string OUTPUT_DIR = "/tmp/electrodynamics";
 
