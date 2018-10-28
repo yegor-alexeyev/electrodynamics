@@ -150,7 +150,7 @@ void process_wave_front(double t, double mark, double radius, matrix result) {
 //given a particle trajectory and a timestamp calculate a map  of retarded times for each discrete point in [0..WIDTH,0..HEIGHT]
 void calculate_retarded_times(double rendered_time, matrix result)
 {
-    for (double t = rendered_time; t >= MAX(T_INIT, rendered_time - 3e-6); t-=0.5/c) {
+    for (double t = rendered_time; t >= rendered_time - 2e-6; t-=1e-9) {
         double wave_front_radius = c*(rendered_time - t);
         process_wave_front(t, t, wave_front_radius, result);
     }
@@ -251,6 +251,10 @@ int main() {
         for (int j = 0; j < HEIGHT; j++){
             for (int i = 0; i < WIDTH; i++){               
                 double retarded_time = data[WIDTH * j + i];
+                if (retarded_time == 0.0) {
+                    data[WIDTH * j + i] = 0;
+                    continue;
+                }
                 vector3 r;
                 r.x = i;
                 r.y = j;
@@ -416,7 +420,7 @@ int main() {
         for (int j = 0; j < HEIGHT; j++){
             for (int i = 0; i < WIDTH; i++){
                 const double value = data[WIDTH * j + i];
-                bitmap[3 * (WIDTH * j + i) + 1] = MIN(255, value/9.3e-4);
+                bitmap[3 * (WIDTH * j + i) + 1] = MIN(255, (value)*13000);
             }
         }
         display_image(bitmap, q);
