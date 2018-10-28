@@ -21,13 +21,14 @@
 /////////////
 
 const int    WIDTH           = 800;
-const int    HEIGHT          = 1600;
+const int    HEIGHT          = 600;
 const double SCALE           = 2.0;            // cm; scale factor
 const double VELOCITY        = 2.448e10;         // cm/s Linear velocity, 0.8333 c
 const double ACCELERATION    = 4.e18;          // Used for linear acceleration
 const double FREQUENCY       = 1.49e7;
-const double AMPLITUDE       = 20;
-const double CHARGE          = 4.80320425e-10; // Elementary charge, statcoulomb
+const double AMPLITUDE       = 10;
+/* const double CHARGE          = 4.80320425e-10; // Elementary charge, statcoulomb */
+const double CHARGE          = 4.80320425e-1; // Elementary charge, statcoulomb
 const int    NSTEPS          = 50;             // For binary search (ret. time)
 const int    TIMESTEPS       = 42000;
 const double T_INCREMENT     = 2.5e-8;
