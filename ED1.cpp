@@ -49,13 +49,14 @@ using namespace std;
 //////////////
 
 #define _i_ complex<double>(0., 1.) // Imaginary unit
-#define c   2.99792458e8           // Speed of light, m/s
+#define c   C_SPEED
 #define pi 3.14159
 
 // FUNCTIONS
 ////////////
 vector3 position(double t){
     vector3 X;
+/* X.x=WIDTH/2; */
     X.x = WIDTH/2 + AMPLITUDE * sin(2*pi*FREQUENCY * t); // Horiz Osc
     /* X.y = HEIGHT/2 + AMPLITUDE * cos(2*pi*FREQUENCY * t); */
     /* X.x = WIDTH/2.; */
@@ -68,6 +69,7 @@ vector3 velocity(double t){
     
     
     vector3 V;
+/* V.x = 0; */
     V.x = AMPLITUDE *2*pi* FREQUENCY*cos(2*pi*FREQUENCY * t); // Horiz Osc
     /* V.y =  - AMPLITUDE *2*pi* FREQUENCY*sin(2*pi*FREQUENCY * t); */
     /* V.x = 0.; */
@@ -81,6 +83,7 @@ vector3 acceleration(double t){
     
     
     vector3 a;
+    /* a.x = 0; */
     a.x = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*sin(2*pi*FREQUENCY * t); // Horiz Osc
     /* a.y = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*cos(2*pi*FREQUENCY * t); // Horiz Osc */
     /* a.x = 0.; */
@@ -263,7 +266,20 @@ int main() {
                     (cross(R_hat, cross(R_hat*c - V, a)) / 
                     (pow(c - dot(R_hat, V),3.) * norm(R))) * CHARGE
                     ;
-                data[WIDTH * j + i] = E.x;
+                /* data[WIDTH * j + i] = E.x; */
+                data[WIDTH * j + i] = norm(E);
+if (i == (WIDTH/2 - 1) && j == (HEIGHT/2))
+{
+    cout << "R = " << norm(R) << "; E = " << norm(E)  << endl;
+}
+if (i == (WIDTH/2 - 2) && j == (HEIGHT/2))
+{
+    cout << "R = " << norm(R) << "; E = " << norm(E)  << endl;
+}
+if (i == (WIDTH/2 - 3) && j == (HEIGHT/2))
+{
+    cout << "R = " << norm(R) << "; E = " << norm(E)  << endl;
+}
 
             }
         }
@@ -273,7 +289,8 @@ int main() {
             for (int i = 0; i < WIDTH; i++){
                 const double value = data[WIDTH * j + i];
                 /* const double scaled_value = value; */
-                const double scaled_value = value*600000;
+//TODO remove sqrt
+                const double scaled_value = sqrt(value);
                 if (scaled_value < 0) {
                     bitmap[3 * (WIDTH * j + i) + 1] = 0;
                     bitmap[3 * (WIDTH * j + i) + 2] = MIN(255, -scaled_value);
@@ -286,7 +303,7 @@ int main() {
         display_image(bitmap, q);
         cv::waitKey(1);                                          
         
-        cout << "\nOn time step " << (int) q << " of " << (int) (TIMESTEPS-1);
+        cout << "\nOn time step " << (int) q << " of " << (int) (TIMESTEPS-1) << endl;
         
         q++;       
         time += T_INCREMENT;
