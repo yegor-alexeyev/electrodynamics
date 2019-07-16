@@ -118,12 +118,11 @@ void processOctet(double x0, double y0, int x, int y, matrix result, double t, d
 }
 
 
-void process_wave_front(double retarded_time, int radius, matrix result, double rendered_time) {
+void process_wave_front(double retarded_time, const vector3 retarded_position, int radius, matrix result, double rendered_time) {
     int x = 0.0;
     int y = radius;
-    const vector3 pos = position(retarded_time);
-    double x0 = pos.x;
-    double y0 = pos.y;
+    double x0 = retarded_position.x;
+    double y0 = retarded_position.y;
 
     while (x <= y) {
         processOctet(x0,y0,x,y, result, retarded_time, rendered_time);
@@ -142,7 +141,8 @@ void calculate_retarded_times(double rendered_time, matrix result)
     for (int wave_front_radius = 0; wave_front_radius <= (WIDTH+HEIGHT); wave_front_radius++)
     {
         double retarded_time = rendered_time - wave_front_radius/c;
-        process_wave_front(retarded_time, wave_front_radius, result, rendered_time);
+        const vector3 retarded_position = position(retarded_time);
+        process_wave_front(retarded_time, retarded_position, wave_front_radius, result, rendered_time);
     }
 
 }
@@ -159,6 +159,46 @@ void display_image(unsigned char* data, int imagecounter)
     imshow( "rendering", image );
 }
 
+
+void superposition_e_field(vector3* data, const double time)
+{
+    matrix retarded_time_data = new double[WIDTH * HEIGHT];   
+    memset(retarded_time_data, 0, WIDTH * HEIGHT * sizeof(double));
+    calculate_retarded_times(time, retarded_time_data);
+
+    for (int j = 0; j < HEIGHT; j++){
+        for (int i = 0; i < WIDTH; i++){               
+            double retarded_time = retarded_time_data[WIDTH * j + i];
+            if (retarded_time == 0.0) {
+                data[WIDTH * j + i] =vector3(0,0,0);
+                continue;
+            }
+            vector3 r;
+            r.x = i;
+            r.y = j;
+            r.z = 0;
+            vector3 R = r - position(retarded_time);
+            vector3 V = velocity(retarded_time);
+            vector3 a = acceleration(retarded_time);
+            const double PHI = 1.0 / (norm(R) - dot(R, V)/c);
+
+            //reusing the matrix
+            /* data[WIDTH * j + i] = PHI; */
+
+            vector3 R_hat = normalize(R);
+            vector3 E = 
+                (R_hat*c - V) * CHARGE * (c*c - norm(V)*norm(V))/ (
+                pow((c - dot(R_hat, V)),3.) * norm(R) * norm(R)) 
+                + 
+                (cross(R_hat, cross(R_hat*c - V, a)) / 
+                (pow(c - dot(R_hat, V),3.) * norm(R))) * CHARGE
+                ;
+            /* data[WIDTH * j + i] = E.x; */
+            data[WIDTH * j + i] = data[WIDTH * j + i] + E;
+        }
+    }
+}
+
 int main() {
     
     // INITIALIZE VARIABLES
@@ -167,7 +207,6 @@ int main() {
     // RGB array for creating images
     unsigned char* bitmap = new unsigned char[WIDTH * HEIGHT*3];
 
-    matrix data = new double[WIDTH * HEIGHT];   
     
     /* double k = FREQUENCY / c;           // Wave number */
     /* vector3 xhat = vector3(1., 0., 0.); */
@@ -190,60 +229,19 @@ int main() {
     cv::namedWindow( "rendering");
 
     // for all time steps...
+    vector3* data = new vector3[WIDTH * HEIGHT];   
 
-    for (int t = 0; t < TIMESTEPS; t++){        
-        memset(data, 0, WIDTH * HEIGHT * sizeof(double));
-        calculate_retarded_times(time, data);
-
-        for (int j = 0; j < HEIGHT; j++){
-            for (int i = 0; i < WIDTH; i++){               
-                double retarded_time = data[WIDTH * j + i];
-                if (retarded_time == 0.0) {
-                    data[WIDTH * j + i] =0;
-                    continue;
-                }
-                vector3 r;
-                r.x = i;
-                r.y = j;
-                r.z = 0;
-                vector3 R = r - position(retarded_time);
-                vector3 V = velocity(retarded_time);
-                vector3 a = acceleration(retarded_time);
-                const double PHI = 1.0 / (norm(R) - dot(R, V)/c);
-
-                //reusing the matrix
-                /* data[WIDTH * j + i] = PHI; */
-
-                vector3 R_hat = normalize(R);
-                vector3 E = 
-                    (R_hat*c - V) * CHARGE * (c*c - norm(V)*norm(V))/ (
-                    pow((c - dot(R_hat, V)),3.) * norm(R) * norm(R)) 
-                    + 
-                    (cross(R_hat, cross(R_hat*c - V, a)) / 
-                    (pow(c - dot(R_hat, V),3.) * norm(R))) * CHARGE
-                    ;
-                /* data[WIDTH * j + i] = E.x; */
-                data[WIDTH * j + i] = norm(E);
-if (i == (WIDTH/2 - 1) && j == (HEIGHT/2))
-{
-    cout << "R = " << norm(R) << "; E = " << norm(E)  << endl;
-}
-if (i == (WIDTH/2 - 2) && j == (HEIGHT/2))
-{
-    cout << "R = " << norm(R) << "; E = " << norm(E)  << endl;
-}
-if (i == (WIDTH/2 - 3) && j == (HEIGHT/2))
-{
-    cout << "R = " << norm(R) << "; E = " << norm(E)  << endl;
-}
-
-            }
+    for (int t = 0; t < TIMESTEPS; t++) {
+        for (int i = 0; i < WIDTH*HEIGHT; i++) {
+            data[i] = vector3(0,0,0);
         }
 
-        
-        for (int j = 0; j < HEIGHT; j++){
-            for (int i = 0; i < WIDTH; i++){
-                const double value = data[WIDTH * j + i];
+
+        superposition_e_field(data, time);
+
+        for (int j = 0; j < HEIGHT; j++) {
+            for (int i = 0; i < WIDTH; i++) {
+                const double value = norm(data[WIDTH * j + i]);
                 /* const double scaled_value = value; */
 //TODO remove sqrt
                 const double scaled_value = sqrt(value);
