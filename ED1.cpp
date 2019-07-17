@@ -245,9 +245,9 @@ int main() {
         for (int j = 0; j < HEIGHT; j++) {
             for (int i = 0; i < WIDTH; i++) {
                 const double value = norm(data[WIDTH * j + i]);
-                /* const double scaled_value = value; */
+                const double scaled_value = value/100;
 //TODO remove sqrt
-                const double scaled_value = sqrt(value);
+                /* const double scaled_value = sqrt(value); */
                 if (scaled_value < 0) {
                     bitmap[3 * (WIDTH * j + i) + 1] = 0;
                     bitmap[3 * (WIDTH * j + i) + 2] = MIN(255, -scaled_value);
