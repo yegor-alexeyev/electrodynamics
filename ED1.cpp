@@ -52,45 +52,53 @@ using namespace std;
 #define c   C_SPEED
 #define pi 3.14159
 
-// FUNCTIONS
-////////////
-vector3 position(double t){
-    vector3 X;
-/* X.x=WIDTH/2; */
-    X.x = WIDTH/2 + AMPLITUDE * sin(2*pi*FREQUENCY * t); // Horiz Osc
-    /* X.y = HEIGHT/2 + AMPLITUDE * cos(2*pi*FREQUENCY * t); */
-    /* X.x = WIDTH/2.; */
-    X.y = HEIGHT/2.;
-    X.z = 0.;
-    return X;
-}
+struct Particle
+{
+double phase;
+double charge;
+    explicit Particle(double charge_, double phase_) {
+        phase = phase_;
+        charge = charge_;
+    }
 
-vector3 velocity(double t){
-    
-    
-    vector3 V;
-/* V.x = 0; */
-    V.x = AMPLITUDE *2*pi* FREQUENCY*cos(2*pi*FREQUENCY * t); // Horiz Osc
-    /* V.y =  - AMPLITUDE *2*pi* FREQUENCY*sin(2*pi*FREQUENCY * t); */
-    /* V.x = 0.; */
-    V.y = 0.;
-    V.z = 0.;
-    return V;
-}
+    vector3 position(double t) const {
+        vector3 X;
+    /* X.x=WIDTH/2; */
+        X.x = WIDTH/2 + AMPLITUDE * sin(2*pi*FREQUENCY * t + phase); // Horiz Osc
+        /* X.y = HEIGHT/2 + AMPLITUDE * cos(2*pi*FREQUENCY * t); */
+        /* X.x = WIDTH/2.; */
+        X.y = HEIGHT/2.;
+        X.z = 0.;
+        return X;
+    }
 
-// We need this to compute the E-field
-vector3 acceleration(double t){
-    
-    
-    vector3 a;
-    /* a.x = 0; */
-    a.x = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*sin(2*pi*FREQUENCY * t); // Horiz Osc
-    /* a.y = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*cos(2*pi*FREQUENCY * t); // Horiz Osc */
-    /* a.x = 0.; */
-    a.y = 0.;
-    a.z = 0.;
-    return a;
-}
+    vector3 velocity(double t) const {
+        
+        
+        vector3 V;
+    /* V.x = 0; */
+        V.x = AMPLITUDE *2*pi* FREQUENCY*cos(2*pi*FREQUENCY * t + phase); // Horiz Osc
+        /* V.y =  - AMPLITUDE *2*pi* FREQUENCY*sin(2*pi*FREQUENCY * t); */
+        /* V.x = 0.; */
+        V.y = 0.;
+        V.z = 0.;
+        return V;
+    }
+
+    // We need this to compute the E-field
+    vector3 acceleration(double t) const {
+        
+        
+        vector3 a;
+        /* a.x = 0; */
+        a.x = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*sin(2*pi*FREQUENCY * t + phase); // Horiz Osc
+        /* a.y = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*cos(2*pi*FREQUENCY * t); // Horiz Osc */
+        /* a.x = 0.; */
+        a.y = 0.;
+        a.z = 0.;
+        return a;
+    }
+};
 
 typedef double* matrix;
 
@@ -148,7 +156,7 @@ void display_image(unsigned char* data, int imagecounter)
 }
 
 
-void superposition_e_field(vector3* data, const double rendered_time)
+void superposition_e_field(const Particle& particle, vector3* data, const double rendered_time)
 {
     matrix retarded_time_data = new double[WIDTH * HEIGHT];   
     memset(retarded_time_data, 0, WIDTH * HEIGHT * sizeof(double));
@@ -156,7 +164,7 @@ void superposition_e_field(vector3* data, const double rendered_time)
     for (int wave_front_radius = 0; wave_front_radius <= (WIDTH+HEIGHT); wave_front_radius++)
     {
         double retarded_time = rendered_time - wave_front_radius/c;
-        const vector3 retarded_position = position(retarded_time);
+        const vector3 retarded_position = particle.position(retarded_time);
         process_wave_front(retarded_time, retarded_position, wave_front_radius, retarded_time_data, rendered_time);
     }
 
@@ -171,19 +179,19 @@ void superposition_e_field(vector3* data, const double rendered_time)
             r.x = i;
             r.y = j;
             r.z = 0;
-            vector3 R = r - position(retarded_time);
-            vector3 V = velocity(retarded_time);
-            vector3 a = acceleration(retarded_time);
+            vector3 R = r - particle.position(retarded_time);
+            vector3 V = particle.velocity(retarded_time);
+            vector3 a = particle.acceleration(retarded_time);
             const double PHI = 1.0 / (norm(R) - dot(R, V)/c);
 
 
             vector3 R_hat = normalize(R);
             vector3 E = 
-                (R_hat*c - V) * CHARGE * (c*c - norm(V)*norm(V))/ (
+                (R_hat*c - V) * particle.charge * (c*c - norm(V)*norm(V))/ (
                 pow((c - dot(R_hat, V)),3.) * norm(R) * norm(R)) 
                 + 
                 (cross(R_hat, cross(R_hat*c - V, a)) / 
-                (pow(c - dot(R_hat, V),3.) * norm(R))) * CHARGE
+                (pow(c - dot(R_hat, V),3.) * norm(R))) * particle.charge
                 ;
             /* data[WIDTH * j + i] = E.x; */
             data[WIDTH * j + i] = data[WIDTH * j + i] + E;
@@ -214,6 +222,8 @@ int main() {
     
     // Set initial time
     double time = T_INIT;
+    Particle negative_particle(-CHARGE, 0);
+    Particle positive_particle(CHARGE, pi);
     
     // MAIN COMPUTATION
     ///////////////////
@@ -229,7 +239,8 @@ int main() {
         }
 
 
-        superposition_e_field(data, time);
+        superposition_e_field(negative_particle, data, time);
+        superposition_e_field(positive_particle, data, time);
 
         for (int j = 0; j < HEIGHT; j++) {
             for (int i = 0; i < WIDTH; i++) {

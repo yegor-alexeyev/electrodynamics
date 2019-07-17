@@ -28,7 +28,7 @@ const double VELOCITY        = 2.448e10;         // cm/s Linear velocity, 0.8333
 const double ACCELERATION    = 4.e18;          // Used for linear acceleration
 //2*frequency*amplitude < c
 const double AMPLITUDE       = 15.0;
-const double FREQUENCY       = C_SPEED/(2*AMPLITUDE);
+const double FREQUENCY       = C_SPEED/(1.2*AMPLITUDE*2*3.14159);
 /* const double CHARGE          = 4.80320425e-10; // Elementary charge, statcoulomb */
 const double CHARGE          = 10000000.480320425; 
 const int    NSTEPS          = 50;             // For binary search (ret. time)
