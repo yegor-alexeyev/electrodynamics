@@ -136,18 +136,6 @@ void process_wave_front(double retarded_time, const vector3 retarded_position, i
 
 
 //given a particle trajectory and a timestamp calculate a map  of retarded times for each discrete point in [0..WIDTH,0..HEIGHT]
-void calculate_retarded_times(double rendered_time, matrix result)
-{
-    for (int wave_front_radius = 0; wave_front_radius <= (WIDTH+HEIGHT); wave_front_radius++)
-    {
-        double retarded_time = rendered_time - wave_front_radius/c;
-        const vector3 retarded_position = position(retarded_time);
-        process_wave_front(retarded_time, retarded_position, wave_front_radius, result, rendered_time);
-    }
-
-}
-
-
 
 
 // MAIN FUNCTION
@@ -160,14 +148,20 @@ void display_image(unsigned char* data, int imagecounter)
 }
 
 
-void superposition_e_field(vector3* data, const double time)
+void superposition_e_field(vector3* data, const double rendered_time)
 {
     matrix retarded_time_data = new double[WIDTH * HEIGHT];   
     memset(retarded_time_data, 0, WIDTH * HEIGHT * sizeof(double));
-    calculate_retarded_times(time, retarded_time_data);
 
-    for (int j = 0; j < HEIGHT; j++){
-        for (int i = 0; i < WIDTH; i++){               
+    for (int wave_front_radius = 0; wave_front_radius <= (WIDTH+HEIGHT); wave_front_radius++)
+    {
+        double retarded_time = rendered_time - wave_front_radius/c;
+        const vector3 retarded_position = position(retarded_time);
+        process_wave_front(retarded_time, retarded_position, wave_front_radius, retarded_time_data, rendered_time);
+    }
+
+    for (int j = 0; j < HEIGHT; j++) {
+        for (int i = 0; i < WIDTH; i++) {               
             double retarded_time = retarded_time_data[WIDTH * j + i];
             if (retarded_time == 0.0) {
                 data[WIDTH * j + i] =vector3(0,0,0);
@@ -182,8 +176,6 @@ void superposition_e_field(vector3* data, const double time)
             vector3 a = acceleration(retarded_time);
             const double PHI = 1.0 / (norm(R) - dot(R, V)/c);
 
-            //reusing the matrix
-            /* data[WIDTH * j + i] = PHI; */
 
             vector3 R_hat = normalize(R);
             vector3 E = 
