@@ -52,6 +52,10 @@ using namespace std;
 #define c   C_SPEED
 #define pi 3.14159
 
+double k = 0.4;
+double angular_frequency = 2*pi*FREQUENCY;
+double vmax = 0;
+double vmin = 0;
 struct Particle
 {
 double phase;
@@ -240,12 +244,15 @@ int main() {
 
 
         superposition_e_field(negative_particle, data, time);
-        superposition_e_field(positive_particle, data, time);
+        /* superposition_e_field(positive_particle, data, time); */
 
+        /* for (int i = WIDTH/2 - AMPLITUDE; i < WIDTH/2 + AMPLITUDE; i++) { */
+        /*     bitmap[3 * (WIDTH * HEIGHT/2 + i)] = 255; */
+        /* } */
         for (int j = 0; j < HEIGHT; j++) {
             for (int i = 0; i < WIDTH; i++) {
                 const double value = norm(data[WIDTH * j + i]);
-                const double scaled_value = value/100;
+                const double scaled_value = value/20;
 //TODO remove sqrt
                 /* const double scaled_value = sqrt(value); */
                 if (scaled_value < 0) {
@@ -254,6 +261,14 @@ int main() {
                 } else {
                     bitmap[3 * (WIDTH * j + i) + 1] = MIN(255, scaled_value);
                     bitmap[3 * (WIDTH * j + i) + 2] = 0;
+                }
+                if ( int(negative_particle.position(time).x) == i && int(negative_particle.position(time).y) == j) {
+                    bitmap[3 * (WIDTH * j + i) + 1] = 255;
+                    bitmap[3 * (WIDTH * j + i) + 2] = 255;
+                }
+                if ( int(positive_particle.position(time).x) == i && int(positive_particle.position(time).y) == j) {
+                    bitmap[3 * (WIDTH * j + i) + 1] = 255;
+                    bitmap[3 * (WIDTH * j + i) + 2] = 255;
                 }
             }
         }
