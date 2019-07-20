@@ -187,10 +187,10 @@ void superposition_e_field(const Particle& particle, vector<vector3>& data, cons
 
             vector3 R_hat = normalize(R);
             vector3 E = ( 
-                (R_hat - V) * ( - dot(V,V)) / dot(R,R) 
+                (R_hat - V) * ( 1.0 - dot(V,V)) / dot(R,R) 
                 + 
                 cross(R_hat, cross(R_hat - V, a)) / norm(R))
-            * particle.charge / pow(1 - dot(R_hat, V),3.) 
+            * particle.charge / pow(1.0 - dot(R_hat, V),3.) 
                 ;
             data[WIDTH * j + i] = data[WIDTH * j + i] + E;
     /* if (j == HEIGHT/2 + 6 && i > WIDTH/2 + 380 && i < WIDTH/2 + 390 ) { */
