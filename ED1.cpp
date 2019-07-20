@@ -164,7 +164,7 @@ void superposition_e_field(const Particle& particle, vector<vector3>& data, cons
 
     for (double wave_front_radius = 0; wave_front_radius <= (WIDTH+HEIGHT); wave_front_radius++)
     {
-        double retarded_time = rendered_time - wave_front_radius/c;
+        double retarded_time = rendered_time - wave_front_radius/1.0; //time is scaled in lightspeed units
         const vector3 retarded_position = particle.position(retarded_time);
         process_wave_front(retarded_time, retarded_position, wave_front_radius, retarded_time_data, rendered_time);
     }
@@ -186,12 +186,11 @@ void superposition_e_field(const Particle& particle, vector<vector3>& data, cons
 
 
             vector3 R_hat = normalize(R);
-            vector3 E = 
-                (R_hat*c - V) * particle.charge * (c*c - norm(V)*norm(V))/ (
-                pow((c - dot(R_hat, V)),3.) * norm(R) * norm(R)) 
+            vector3 E = ( 
+                (R_hat - V) * ( - dot(V,V)) / dot(R,R) 
                 + 
-                (cross(R_hat, cross(R_hat*c - V, a)) / 
-                (pow(c - dot(R_hat, V),3.) * norm(R))) * particle.charge
+                cross(R_hat, cross(R_hat - V, a)) / norm(R))
+            * particle.charge / pow(1 - dot(R_hat, V),3.) 
                 ;
             data[WIDTH * j + i] = data[WIDTH * j + i] + E;
     /* if (j == HEIGHT/2 + 6 && i > WIDTH/2 + 380 && i < WIDTH/2 + 390 ) { */
