@@ -46,6 +46,7 @@ class vector3{
         double  separation(const vector3& A, const vector3& B);
         vector3 operator +(const vector3 B); 
         vector3 operator -(const vector3 B); 
+        bool operator ==(const vector3& B); 
         vector3 operator *(const double a); 
         vector3 operator /(const double a); 
 };
@@ -87,6 +88,10 @@ vector3 vector3::operator+(const vector3 B){
 
 vector3 vector3::operator-(const vector3 B){
     return vector3(x - B.x, y - B.y, z - B.z);
+}
+
+bool vector3::operator==(const vector3& B){
+    return x==B.x && y==B.y && z==B.z;
 }
 
 vector3 vector3::operator*(const double a){

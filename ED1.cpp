@@ -45,11 +45,6 @@
 
 using namespace std;
 
-// DEFINITIONS
-//////////////
-
-#define _i_ complex<double>(0., 1.) // Imaginary unit
-#define c   C_SPEED
 
 double sine(double arc_amount) {
     return sin(arc_amount*2.0*pi);
@@ -172,8 +167,11 @@ void superposition_e_field(const Particle& particle, vector<vector3>& data, cons
     for (int j = 0; j < HEIGHT; j++) {
         for (int i = 0; i < WIDTH; i++) {               
             double retarded_time = retarded_time_data[WIDTH * j + i];
+            if (data[WIDTH * j + i] == vector3(-1,0,0)) {
+                continue;
+            }
             if (retarded_time == 0.0) {
-                data[WIDTH * j + i] =vector3(0,0,0);
+                data[WIDTH * j + i] =vector3(-1,0,0);
                 continue;
             }
             vector3 r;
@@ -189,15 +187,20 @@ void superposition_e_field(const Particle& particle, vector<vector3>& data, cons
             vector3 E = ( 
                 (R_hat - V) * ( 1.0 - dot(V,V)) / dot(R,R) 
                 + 
-                cross(R_hat, cross(R_hat - V, a)) / norm(R))
-            * particle.charge / pow(1.0 - dot(R_hat, V),3.) 
+                cross(R_hat, cross(R_hat - V, a)) / norm(R)
+            )* particle.charge / pow(1.0 - dot(R_hat, V),3.) 
                 ;
             data[WIDTH * j + i] = data[WIDTH * j + i] + E;
-    /* if (j == HEIGHT/2 + 6 && i > WIDTH/2 + 380 && i < WIDTH/2 + 390 ) { */
-    /* cout << "line: " << E.y << " " << V.x << " " << a.x << " time: " << retarded_time << endl; */
-    /* } */
+
+            /* if (j == HEIGHT/2 && i > WIDTH/2 + 160 && i < WIDTH/2 + 170 ) { */
+                /* cout << i << " " << j <<" line: " << E.x << " " << E.y << " " << R.x << " time: " << retarded_time << endl; */
+                /* cout << i << " " << j <<" line: " << norm(data[WIDTH*j+i]) << endl; */
+                /* cout << i << " " << j <<" line: " << E.x  << " " << E.y<< endl; */
+            /* } */
+
         }
     }
+/* cout << "done" << endl; */
 }
 
 int main() {
@@ -227,9 +230,9 @@ std::vector<Particle> particles;
 for (size_t i = 0; i < 1; i++) {
     particles.push_back(Particle(-CHARGE, 0.0, WIDTH/2));
 }
-/* for (size_t i = 0; i < 1; i++) { */
-/*     particles.push_back(Particle(-CHARGE, 0, WIDTH/2 )); */
-/* } */
+for (size_t i = 0; i < 1; i++) {
+    particles.push_back(Particle(CHARGE, 0.5, WIDTH/2 ));
+}
     
     // MAIN COMPUTATION
     ///////////////////
@@ -251,7 +254,11 @@ for (Particle& particle: particles) {
 
         vector<double> euclideanData;
         for (vector3& datum: data) {
-            euclideanData.push_back(norm(datum));
+            if ( datum == vector3(-1,0,0)){
+                euclideanData.push_back(0);
+            } else {
+                euclideanData.push_back(norm(datum));
+            }
         }
 
         /* cv::normalize(euclideanData, euclideanData , 255.0, 0.0, cv::NORM_INF); */
@@ -262,7 +269,7 @@ for (Particle& particle: particles) {
         for (int j = 0; j < HEIGHT; j++) {
             for (int i = 0; i < WIDTH; i++) {
                 const double value = euclideanData[WIDTH * j + i];
-                const double scaled_value = value/10;
+                const double scaled_value = value/5;
                 if (scaled_value < 0) {
                     bitmap[3 * (WIDTH * j + i) + 1] = 0;
                     bitmap[3 * (WIDTH * j + i) + 2] = MIN(255, -scaled_value);
