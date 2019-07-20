@@ -20,20 +20,20 @@
 // PARAMETERS
 /////////////
 
-const double C_SPEED =  299792458.0;           // Speed of light, m/s
+#define pi 3.14159
+const double C_SPEED =  290.792458;           // Speed of light, m/us
 const int    WIDTH           = 800;
 const int    HEIGHT          = 600;
-const double SCALE           = 2.0;            // cm; scale factor
-const double VELOCITY        = 2.448e10;         // cm/s Linear velocity, 0.8333 c
-const double ACCELERATION    = 4.e18;          // Used for linear acceleration
 //2*frequency*amplitude < c
-const double AMPLITUDE       = 15.0;
-const double FREQUENCY       = C_SPEED/(1.2*AMPLITUDE*2*3.14159);
+double speed_amplitude       = C_SPEED*0.1;
+double frequency = 10;
+const double AMPLITUDE       = speed_amplitude/frequency/2./pi;
+const double period_distance       = AMPLITUDE*4;
 /* const double CHARGE          = 4.80320425e-10; // Elementary charge, statcoulomb */
 const double CHARGE          = 10000000.480320425; 
 const int    NSTEPS          = 50;             // For binary search (ret. time)
 const int    TIMESTEPS       = 42000;
-const double T_INCREMENT     = 0.01/FREQUENCY;
+const double T_INCREMENT     = 0.01/frequency;
 const double GAMMA           = 1. / 2.2;
 
 const double T_INIT          = 0.0;

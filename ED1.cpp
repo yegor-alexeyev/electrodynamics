@@ -50,27 +50,30 @@ using namespace std;
 
 #define _i_ complex<double>(0., 1.) // Imaginary unit
 #define c   C_SPEED
-#define pi 3.14159
 
-double k = 0.4;
-double angular_frequency = 2*pi*FREQUENCY;
-double vmax = 0;
-double vmin = 0;
+double sine(double arc_amount) {
+    return sin(arc_amount*2.0*pi);
+}
+
+double cosine(double arc_amount) {
+    return cos(arc_amount*2.0*pi);
+}
+
+
 struct Particle
 {
 double phase;
 double charge;
-    explicit Particle(double charge_, double phase_) {
+double start_position;
+    explicit Particle(double charge_, double phase_, double start_position_) {
         phase = phase_;
         charge = charge_;
+        start_position = start_position_;
     }
 
     vector3 position(double t) const {
         vector3 X;
-    /* X.x=WIDTH/2; */
-        X.x = WIDTH/2 + AMPLITUDE * sin(2*pi*FREQUENCY * t + phase); // Horiz Osc
-        /* X.y = HEIGHT/2 + AMPLITUDE * cos(2*pi*FREQUENCY * t); */
-        /* X.x = WIDTH/2.; */
+        X.x = start_position - speed_amplitude * cosine(frequency * t + phase)/frequency/2.0/pi; // Horiz Osc
         X.y = HEIGHT/2.;
         X.z = 0.;
         return X;
@@ -80,10 +83,7 @@ double charge;
         
         
         vector3 V;
-    /* V.x = 0; */
-        V.x = AMPLITUDE *2*pi* FREQUENCY*cos(2*pi*FREQUENCY * t + phase); // Horiz Osc
-        /* V.y =  - AMPLITUDE *2*pi* FREQUENCY*sin(2*pi*FREQUENCY * t); */
-        /* V.x = 0.; */
+        V.x = speed_amplitude * sine(frequency * t + phase); // Horiz Osc
         V.y = 0.;
         V.z = 0.;
         return V;
@@ -94,10 +94,7 @@ double charge;
         
         
         vector3 a;
-        /* a.x = 0; */
-        a.x = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*sin(2*pi*FREQUENCY * t + phase); // Horiz Osc
-        /* a.y = -AMPLITUDE * 4*pi*pi*FREQUENCY*FREQUENCY*cos(2*pi*FREQUENCY * t); // Horiz Osc */
-        /* a.x = 0.; */
+        a.x = speed_amplitude *frequency*2.0*pi*cosine(frequency * t + phase); // Horiz Osc
         a.y = 0.;
         a.z = 0.;
         return a;
@@ -160,12 +157,12 @@ void display_image(unsigned char* data, int imagecounter)
 }
 
 
-void superposition_e_field(const Particle& particle, vector3* data, const double rendered_time)
+void superposition_e_field(const Particle& particle, vector<vector3>& data, const double rendered_time)
 {
     matrix retarded_time_data = new double[WIDTH * HEIGHT];   
     memset(retarded_time_data, 0, WIDTH * HEIGHT * sizeof(double));
 
-    for (int wave_front_radius = 0; wave_front_radius <= (WIDTH+HEIGHT); wave_front_radius++)
+    for (double wave_front_radius = 0; wave_front_radius <= (WIDTH+HEIGHT); wave_front_radius++)
     {
         double retarded_time = rendered_time - wave_front_radius/c;
         const vector3 retarded_position = particle.position(retarded_time);
@@ -186,7 +183,6 @@ void superposition_e_field(const Particle& particle, vector3* data, const double
             vector3 R = r - particle.position(retarded_time);
             vector3 V = particle.velocity(retarded_time);
             vector3 a = particle.acceleration(retarded_time);
-            const double PHI = 1.0 / (norm(R) - dot(R, V)/c);
 
 
             vector3 R_hat = normalize(R);
@@ -197,8 +193,10 @@ void superposition_e_field(const Particle& particle, vector3* data, const double
                 (cross(R_hat, cross(R_hat*c - V, a)) / 
                 (pow(c - dot(R_hat, V),3.) * norm(R))) * particle.charge
                 ;
-            /* data[WIDTH * j + i] = E.x; */
             data[WIDTH * j + i] = data[WIDTH * j + i] + E;
+    /* if (j == HEIGHT/2 + 6 && i > WIDTH/2 + 380 && i < WIDTH/2 + 390 ) { */
+    /* cout << "line: " << E.y << " " << V.x << " " << a.x << " time: " << retarded_time << endl; */
+    /* } */
         }
     }
 }
@@ -226,8 +224,13 @@ int main() {
     
     // Set initial time
     double time = T_INIT;
-    Particle negative_particle(-CHARGE, 0);
-    Particle positive_particle(CHARGE, pi);
+std::vector<Particle> particles;
+for (size_t i = 0; i < 1; i++) {
+    particles.push_back(Particle(-CHARGE, 0.0, WIDTH/2));
+}
+/* for (size_t i = 0; i < 1; i++) { */
+/*     particles.push_back(Particle(-CHARGE, 0, WIDTH/2 )); */
+/* } */
     
     // MAIN COMPUTATION
     ///////////////////
@@ -235,7 +238,7 @@ int main() {
     cv::namedWindow( "rendering");
 
     // for all time steps...
-    vector3* data = new vector3[WIDTH * HEIGHT];   
+    vector<vector3> data(WIDTH * HEIGHT);   
 
     for (int t = 0; t < TIMESTEPS; t++) {
         for (int i = 0; i < WIDTH*HEIGHT; i++) {
@@ -243,18 +246,24 @@ int main() {
         }
 
 
-        superposition_e_field(negative_particle, data, time);
-        /* superposition_e_field(positive_particle, data, time); */
+for (Particle& particle: particles) {
+        superposition_e_field(particle, data, time);
+}
 
-        /* for (int i = WIDTH/2 - AMPLITUDE; i < WIDTH/2 + AMPLITUDE; i++) { */
-        /*     bitmap[3 * (WIDTH * HEIGHT/2 + i)] = 255; */
-        /* } */
+        vector<double> euclideanData;
+        for (vector3& datum: data) {
+            euclideanData.push_back(norm(datum));
+        }
+
+        /* cv::normalize(euclideanData, euclideanData , 255.0, 0.0, cv::NORM_INF); */
+
+        for (int i = WIDTH/2 - AMPLITUDE; i < WIDTH/2 + AMPLITUDE; i++) {
+            bitmap[3 * (WIDTH * HEIGHT/2 + i)] = 255;
+        }
         for (int j = 0; j < HEIGHT; j++) {
             for (int i = 0; i < WIDTH; i++) {
-                const double value = norm(data[WIDTH * j + i]);
-                const double scaled_value = value/20;
-//TODO remove sqrt
-                /* const double scaled_value = sqrt(value); */
+                const double value = euclideanData[WIDTH * j + i];
+                const double scaled_value = value/10;
                 if (scaled_value < 0) {
                     bitmap[3 * (WIDTH * j + i) + 1] = 0;
                     bitmap[3 * (WIDTH * j + i) + 2] = MIN(255, -scaled_value);
@@ -262,19 +271,24 @@ int main() {
                     bitmap[3 * (WIDTH * j + i) + 1] = MIN(255, scaled_value);
                     bitmap[3 * (WIDTH * j + i) + 2] = 0;
                 }
-                if ( int(negative_particle.position(time).x) == i && int(negative_particle.position(time).y) == j) {
+for (Particle& particle: particles) {
+                if ( int(particle.position(time).x) == i && int(particle.position(time).y) == j) {
                     bitmap[3 * (WIDTH * j + i) + 1] = 255;
                     bitmap[3 * (WIDTH * j + i) + 2] = 255;
                 }
-                if ( int(positive_particle.position(time).x) == i && int(positive_particle.position(time).y) == j) {
-                    bitmap[3 * (WIDTH * j + i) + 1] = 255;
-                    bitmap[3 * (WIDTH * j + i) + 2] = 255;
-                }
+}
             }
         }
         display_image(bitmap, q);
-        cv::waitKey(1);                                          
-        
+        int a = cv::waitKey(1);
+
+if (a == '9') {
+speed_amplitude -= C_SPEED*0.01;
+
+}         
+if (a == '0') {
+speed_amplitude += C_SPEED*0.01;
+}
         cout << "\nOn time step " << (int) q << " of " << (int) (TIMESTEPS-1) << endl;
         
         q++;       
@@ -284,7 +298,6 @@ int main() {
     // Cleanup & Exit
     /////////////////
     
-    delete[] data;
     delete[] bitmap;
     
     return 0;
